@@ -313,6 +313,7 @@
                   </execution>
                 </executions>
                 <configuration>
+                  <includeDefaultBundles>false</includeDefaultBundles>
                   <httpPort>${http.port}</httpPort>
                   <controlHost>${test.host}</controlHost>
                 </configuration>
