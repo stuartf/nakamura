@@ -318,6 +318,27 @@
                   <controlHost>${test.host}</controlHost>
                 </configuration>
               </plugin>
+              <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.1</version>
+                <executions>
+                  <execution>
+                    <id>run-ruby-tests</id>
+                    <phase>integration-test</phase>
+                    <goals>
+                      <goal>exec</goal>
+                    </goals>
+                    <configuration>
+                      <executable>ruby</executable>
+                      <workingDirectory>..</workingDirectory>
+                      <arguments>
+                        <argument>tools/runalltests.rb</argument>
+                      </arguments>
+                    </configuration>
+                  </execution>
+                </executions>
+              </plugin>
             </plugins>
           </build>
         </profile>
