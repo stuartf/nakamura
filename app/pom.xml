@@ -243,7 +243,7 @@
           <id>integrationTesting</id>
           <activation>
             <property>
-              <name>!maven.test.skip</name>
+              <name>!maven.integration.test.skip</name>
             </property>
           </activation>
           <build>
@@ -317,6 +317,28 @@
                   <httpPort>${http.port}</httpPort>
                   <controlHost>${test.host}</controlHost>
                 </configuration>
+              </plugin>
+              <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>wait-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                  <execution>
+                    <id>waitForNakamura</id>
+                    <phase>pre-integration-test</phase>
+                    <goals>
+                      <goal>wait</goal>
+                    </goals>
+                    <configuration>
+                      <protocol>http</protocol>
+                      <host>${test.host}</host>
+                      <port>8080</port>
+                      <file>/dev/index.html</file>
+                      <maxcount>0</maxcount>
+                      <timeout>120000</timeout>
+                    </configuration>
+                  </execution>
+                </executions>
               </plugin>
               <plugin>
                 <groupId>org.codehaus.mojo</groupId>
