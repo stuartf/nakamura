@@ -31,7 +31,7 @@
       <ux>0.5.0-SNAPSHOT</ux>
 
       <!-- HTTP port to use when running mvn jetty:run -->
-      <run.http.port>8888</run.http.port>
+      <http.port>8080</http.port>
 
       <!-- Timeout when checking for Sling readyness before starting tests -->
       <HttpTestBase.readyTimeoutSeconds>62</HttpTestBase.readyTimeoutSeconds>
@@ -48,9 +48,8 @@
       <!--
         Set this to true to stop mvn once the integration test Jetty instance is
         started. Useful to manually test the integration testing webapp.
--->
+      -->
       <integration.test.wait>false</integration.test.wait>
->>>>>>> start and stop the launchpad during the integration test phase
     </properties>
 
     <build>
