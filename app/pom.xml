@@ -315,6 +315,7 @@
                   <includeDefaultBundles>false</includeDefaultBundles>
                   <httpPort>${http.port}</httpPort>
                   <controlHost>${test.host}</controlHost>
+                  <slingHome>${project.build.directory}/sling</slingHome>
                 </configuration>
               </plugin>
               <plugin>
