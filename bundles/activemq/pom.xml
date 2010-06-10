@@ -130,5 +130,9 @@ org.apache.geronimo.transaction.manager*;resolution:=optional,
       <version>1.5.4</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>emma</groupId>
+      <artifactId>emma</artifactId>
+    </dependency>
   </dependencies>
 </project>

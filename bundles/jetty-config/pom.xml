@@ -32,6 +32,19 @@
             <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
           </archive>
         </configuration>
+        <executions>
+          <execution>
+            <id>emma-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <classifier>emma</classifier>
+              <classesDirectory>${basedir}/target/generated-classes/emma/classes</classesDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

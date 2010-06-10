@@ -163,5 +163,9 @@
       <version>1.8.3</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>emma</groupId>
+      <artifactId>emma</artifactId>
+    </dependency>
   </dependencies>
 </project>

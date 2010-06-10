@@ -127,5 +127,9 @@
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.scr.annotations</artifactId>
     </dependency>
+    <dependency>
+      <groupId>emma</groupId>
+      <artifactId>emma</artifactId>
+    </dependency>
   </dependencies>
 </project>

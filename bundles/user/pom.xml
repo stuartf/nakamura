@@ -170,5 +170,9 @@
       <version>0.7-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>emma</groupId>
+      <artifactId>emma</artifactId>
+    </dependency>
   </dependencies>
 </project>
