@@ -1,0 +1,13 @@
+{
+    "sling:resourceType": "sakai/proxy",
+    "sakai:request-proxy-endpoint": "http://${hostname}/bigbluebutton/api/${apiMethod}?${queryString}",
+    "sakai:request-proxy-method": "GET",
+    "sakai:request-content-type" : "application/x-www-form-urlencoded",
+    "sakai:title" : "Big Blue Button Create Conference",
+    "sakai:preprocessor" : "bbb",
+    "sakai:description" : ["Proxies Big Blue Button create API as POST http://localhost:8080/var/proxy/bbb/bbb_create.json",
+    "The body of the post must conform to the <a href=\"http://code.google.com/p/bigbluebutton/wiki/API\">Big Blue Button API</a>"
+    ]
+}
+
+
