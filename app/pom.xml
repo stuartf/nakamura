@@ -222,6 +222,10 @@
             <classifier>app</classifier>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+          <groupId>emma</groupId>
+          <artifactId>emma</artifactId>
+        </dependency>
     </dependencies>
 
     <profiles>
