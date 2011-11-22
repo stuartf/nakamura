@@ -83,6 +83,8 @@
         <module>bundles/lom</module>
         <module>bundles/content-packaging</module>
         <module>testscripts</module>
+        <module>contrib/casauth</module>
+        <module>contrib/oracle-jdbc-6</module>
       </modules>
     </profile>
     <profile>

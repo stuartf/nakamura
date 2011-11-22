@@ -4,6 +4,11 @@
 <bundles>
     <startLevel level="0">
         <bundle>
+          <groupId>org.sakaiproject.nakamura</groupId>
+          <artifactId>org.sakaiproject.nakamura.ojdbc6</artifactId>
+          <version>1.1-SNAPSHOT</version>
+        </bundle>
+        <bundle>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.1</version>
@@ -547,6 +552,11 @@ KERN-1187
     <bundle>
       <groupId>org.sakaiproject.nakamura</groupId>
       <artifactId>org.sakaiproject.nakamura.discussion</artifactId>
+      <version>1.1-SNAPSHOT</version>
+    </bundle>
+    <bundle>
+      <groupId>org.sakaiproject.nakamura</groupId>
+      <artifactId>org.sakaiproject.nakamura.auth.cas</artifactId>
       <version>1.1-SNAPSHOT</version>
     </bundle>
     <bundle>
