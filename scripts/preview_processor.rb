@@ -207,13 +207,13 @@ def main(term_server)
         else
           begin
             # Check if user wants autotagging
-            uid = meta["sakai:pool-content-created-for"]
-            user_file = @s.execute_get @s.url_for("/system/me?uid=#{uid}")
+            user_id = meta["sakai:pool-content-created-for"]
+            user_file = @s.execute_get @s.url_for("/system/me?uid=#{user_id}")
             unless user_file.code == '200'
               raise "Failed to get user: #{uid}"
             end
             user = JSON.parse(user_file.body)
-            if user["user"]["properties"]["isAutoTagging"]
+            if user["user"]["properties"]["isAutoTagging"] and user["user"]["properties"]["isAutoTagging"] != "false"
               # Get text from the document
               Docsplit.extract_text filename, :ocr => false
               text_content = IO.read(id + ".txt")
@@ -238,10 +238,9 @@ def main(term_server)
               @s.execute_post @s.url_for("p/#{id}"), {"sakai:tags" => postData}
               log "Generate tags for #{id}, #{postData}"
               FileUtils.rm id + ".txt"
-              user_id = meta["sakai:pool-content-created-for"]
               admin_id = "admin"
               origin_file_name = meta["sakai:pooled-content-file-name"]
-              if postData != nil && postData.length > 0
+              if postData != nil && postData.length > 0 && user["user"]["properties"]["sendTagMsg"] && user["user"]["properties"]["sendTagMsg"] != "false"
                 msg_body = "We have automatically added the following tags for #{origin_file_name}:\n\n #{tags}.\n\nThis will allow you to find it back more easily and will help other people in finding your content, in case your content is public.\n\nRegards, \nThe Sakai Team"
                 @s.execute_post(@s.url_for("~#{admin_id}/message.create.html"), {
                   "sakai:type" => "internal",
