@@ -23,7 +23,7 @@ module Net::HTTPHeader
     @header = {"Referer" => [$preview_referer]}
     return unless initheader
     initheader.each do |key, value|
-      warn "net/http: warning: duplicated HTTP header: #{key}" if key?(key) and $VERBOSE
+      warn "net/http: warning: duplicated HTTP header: #{key}" if key?(key) && $VERBOSE
       @header[key.downcase] = [value.strip]
     end
   end
@@ -88,7 +88,7 @@ end
 # mimetype entry in mime.types and use it for the extension to create a preview
 def determine_file_extension_with_mime_type(mimetype, given_extension)
   # strip off the leading . in the given extension
-  if given_extension and given_extension.match(/^\./)
+  if given_extension && given_extension.match(/^\./)
     given_extension = given_extension[1..-1]
   end
   File.open("../mime.types", "r") do |f|
@@ -213,7 +213,7 @@ def main(term_server)
               raise "Failed to get user: #{uid}"
             end
             user = JSON.parse(user_file.body)
-            if user["user"]["properties"]["isAutoTagging"] and user["user"]["properties"]["isAutoTagging"] != "false"
+            if user["user"]["properties"]["isAutoTagging"] && user["user"]["properties"]["isAutoTagging"] != "false"
               # Get text from the document
               Docsplit.extract_text filename, :ocr => false
               text_content = IO.read(id + ".txt")
