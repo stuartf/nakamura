@@ -77,6 +77,10 @@ public class DocStep extends AbstractWorldCreationStep {
       return;
     }
 
+    // Grab the creatorID from the jcrSession
+    javax.jcr.Session jcrSession = request.getResourceResolver().adaptTo(javax.jcr.Session.class);
+    String creatorID = jcrSession.getUserID();
+
     Iterator<String> keys = structure.keys();
     while (keys.hasNext()) {
       JSONObject docDefinition;
@@ -106,6 +110,9 @@ public class DocStep extends AbstractWorldCreationStep {
       createFileData.put("sakai:copyright", "creativecommons");
       createFileData.put("structure0", docContent.getJSONObject("structure0").toString());
       createFileData.put("mimeType", "x-sakai/document");
+      if (docContent.has("excludeSearch")) {
+        createFileData.put("sakai:excludeSearch", docContent.getBoolean("excludeSearch"));
+      }
 
       LOGGER.debug("Creating pooled content, data = " + createFileData.toString(2));
       SubRequest pooledContentRequest = new SubRequest("/system/pool/createfile", "POST", createFileData, request, response, write);
@@ -122,7 +129,7 @@ public class DocStep extends AbstractWorldCreationStep {
       fillContent(docContent, poolID);
 
       // now set ACLs on the file
-      setPermissions(permission, poolID, viewers, editors);
+      setPermissions(permission, poolID, viewers, editors, creatorID);
 
     }
 
@@ -147,7 +154,7 @@ public class DocStep extends AbstractWorldCreationStep {
     fillContentRequest.doForward();
   }
 
-  private void setPermissions(String permission, String poolID, JSONArray viewers, JSONArray editors)
+  private void setPermissions(String permission, String poolID, JSONArray viewers, JSONArray editors, String creatorUserID)
           throws JSONException, IOException, URISyntaxException, ServletException {
     // this logic duplicates the client-side code in sakai.api.content.setFilePermissions
     String path = "/p/" + poolID;
@@ -157,25 +164,19 @@ public class DocStep extends AbstractWorldCreationStep {
     if (permission.equals("everyone")) {
       // everyone = all logged in users
       membersData.accumulate(":viewer", "everyone").accumulate(":viewer@Delete", "anonymous");
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "everyone").put("privilege@jcr:read", "granted"));
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "anonymous").put("privilege@jcr:read", "denied"));
     } else if (permission.equals("public")) {
       // public = anonymous and logged-in
       membersData.accumulate(":viewer", "everyone").accumulate(":viewer", "anonymous");
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "everyone").put("privilege@jcr:read", "granted"));
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "anonymous").put("privilege@jcr:read", "granted"));
     } else if (permission.equals("private")) {
       // managers and members only
       membersData.accumulate(":viewer@Delete", "everyone").accumulate(":viewer@Delete", "anonymous");
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "everyone").put("privilege@jcr:read", "denied"));
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "anonymous").put("privilege@jcr:read", "denied"));
     } else if (permission.equals("group")) {
       // group members only
-      membersData.accumulate(":viewer", groupID)
-      ;
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "everyone").put("privilege@jcr:read", "denied"));
-      setACL(path + ".modifyAce.html", new JSONObject().put("principalId", "anonymous").put("privilege@jcr:read", "denied"));
+      membersData.accumulate(":viewer", groupID).accumulate(":viewer@Delete", "everyone").accumulate(":viewer@Delete", "anonymous");
     }
+
+    // Always remove the creator as an explicit manager
+    membersData.accumulate(":manager@Delete", creatorUserID);
 
     // set memberships for the group members and managers
     for (int i = 0; i < viewers.length(); i++) {

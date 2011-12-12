@@ -23,7 +23,7 @@ module Net::HTTPHeader
     @header = {"Referer" => [$preview_referer]}
     return unless initheader
     initheader.each do |key, value|
-      warn "net/http: warning: duplicated HTTP header: #{key}" if key?(key) and $VERBOSE
+      warn "net/http: warning: duplicated HTTP header: #{key}" if key?(key) && $VERBOSE
       @header[key.downcase] = [value.strip]
     end
   end
@@ -88,7 +88,7 @@ end
 # mimetype entry in mime.types and use it for the extension to create a preview
 def determine_file_extension_with_mime_type(mimetype, given_extension)
   # strip off the leading . in the given extension
-  if given_extension and given_extension.match(/^\./)
+  if given_extension && given_extension.match(/^\./)
     given_extension = given_extension[1..-1]
   end
   File.open("../mime.types", "r") do |f|
@@ -206,47 +206,48 @@ def main(term_server)
           FileUtils.rm DOCS_DIR + "/#{filename_thumb}"
         else
           begin
-            # Get text from the document
-            Docsplit.extract_text filename, :ocr => false
-            text_content = IO.read(id + ".txt")
-            postData = Net::HTTP.post_form(URI.parse(term_server), {'context' => text_content})
-            if postData != nil
-              postData = JSON.parse postData.body
-            end
-            tags = ""
-            if postData != nil
-              for i in (0..postData.length - 1)
-                tags += "- " + postData[i] + "\n"
-              end
-            end
-            # Add old tags to new tags
-            origin_tags = meta["sakai:tags"]
-            if origin_tags != nil && origin_tags.length > 0
-              for tag in origin_tags
-                postData << tag
-              end
-            end
-            # Generate tags for document
-            @s.execute_post @s.url_for("p/#{id}"), {"sakai:tags" => postData}
-            log "Generate tags for #{id}, #{postData}"
-            FileUtils.rm id + ".txt"
+            # Check if user wants autotagging
             user_id = meta["sakai:pool-content-created-for"]
-            admin_id = "admin"
-            origin_file_name = meta["sakai:pooled-content-file-name"]
-            if postData != nil && postData.length > 0
-              msg_body = "We have automatically added the following tags for #{origin_file_name}:\n\n #{tags}.\n\nThis will allow you to find it back more easily and will help other people in finding your content, in case your content is public.\n\nRegards, \nThe Sakai Team"
-              @s.execute_post(@s.url_for("~#{admin_id}/message.create.html"), {
-                "sakai:type" => "internal",
-                "sakai:sendstate" => "pending",
-                "sakai:messagebox" => "outbox",
-                "sakai:to" => "internal:#{user_id}",
-                "sakai:from" => "#{admin_id}",
-                "sakai:subject" => "We've added some tags to #{origin_file_name}",
-                "sakai:body" => msg_body,
-                "_charset_" => "utf-8",
-                "sakai:category" => "message"
-              })
-              log "sending message from #{admin_id} user to #{user_id}"
+            user_file = @s.execute_get @s.url_for("/system/me?uid=#{user_id}")
+            unless user_file.code == '200'
+              raise "Failed to get user: #{uid}"
+            end
+            user = JSON.parse(user_file.body)
+            if user["user"]["properties"]["isAutoTagging"] != "false"
+              # Get text from the document
+              Docsplit.extract_text filename, :ocr => false
+              text_content = IO.read(id + ".txt")
+              postData = Net::HTTP.post_form(URI.parse(term_server), {'context' => text_content})
+              if postData != nil
+                postData = JSON.parse postData.body
+              end
+              tags = ""
+              if postData != nil
+                for i in (0..postData.length - 1)
+                  tags += "- " + postData[i] + "\n"
+                end
+              end
+              # Generate tags for document
+              @s.execute_post @s.url_for("p/#{id}"), {':operation' => 'tag', 'key' => postData}
+              log "Generate tags for #{id}, #{postData}"
+              FileUtils.rm id + ".txt"
+              admin_id = "admin"
+              origin_file_name = meta["sakai:pooled-content-file-name"]
+              if postData != nil && postData.length > 0 && user["user"]["properties"]["sendTagMsg"] && user["user"]["properties"]["sendTagMsg"] != "false"
+                msg_body = "We have automatically added the following tags for #{origin_file_name}:\n\n #{tags}\n\nThese tags were created to aid in the discoverability of your content.\n\nRegards, \nThe Sakai Team"
+                @s.execute_post(@s.url_for("~#{admin_id}/message.create.html"), {
+                  "sakai:type" => "internal",
+                  "sakai:sendstate" => "pending",
+                  "sakai:messagebox" => "outbox",
+                  "sakai:to" => "internal:#{user_id}",
+                  "sakai:from" => "#{admin_id}",
+                  "sakai:subject" => "We've added some tags to #{origin_file_name}",
+                  "sakai:body" => msg_body,
+                  "_charset_" => "utf-8",
+                  "sakai:category" => "message"
+                })
+                log "sending message from #{admin_id} user to #{user_id}"
+              end
             end
           rescue Exception => msg
             log "failed to generate document tags: #{msg}", :warn
@@ -298,7 +299,7 @@ def main(term_server)
     rescue Exception => msg
       # Output a timestamp + the error message whenever an exception is raised
       # and flag this file as failed for processing.
-      log "error generating preview/thumbnail (ID: #{id}): #{msg}", :warn
+      log "error generating preview/thumbnail (ID: #{id}): #{msg.inspect}\n#{msg.backtrace.join("\n")}", :warn
       @s.execute_post @s.url_for("p/#{id}"), {"sakai:processing_failed" => "true"}
     ensure
       # No matter what we flag the file as processed and delete the temp copied file.

@@ -17,6 +17,8 @@
  */
 package org.sakaiproject.nakamura.files.servlets;
 
+import static org.apache.sling.jcr.resource.JcrResourceConstants.SLING_RESOURCE_TYPE_PROPERTY;
+import static org.sakaiproject.nakamura.api.files.FilesConstants.RT_SAKAI_TAG;
 import static org.sakaiproject.nakamura.api.files.FilesConstants.SAKAI_TAG_NAME;
 import static org.sakaiproject.nakamura.api.files.FilesConstants.SAKAI_TAGS;
 import static org.sakaiproject.nakamura.api.files.FilesConstants.TOPIC_FILES_TAG;
@@ -35,7 +37,6 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.SlingHttpServletRequest;
-import org.apache.sling.api.request.RequestParameter;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.servlets.HtmlResponse;
@@ -47,7 +48,8 @@ import org.sakaiproject.nakamura.api.doc.ServiceDocumentation;
 import org.sakaiproject.nakamura.api.doc.ServiceMethod;
 import org.sakaiproject.nakamura.api.doc.ServiceParameter;
 import org.sakaiproject.nakamura.api.doc.ServiceResponse;
-import org.sakaiproject.nakamura.api.files.FileUtils;
+import org.sakaiproject.nakamura.api.files.TagUtils;
+import org.sakaiproject.nakamura.api.lite.ClientPoolException;
 import org.sakaiproject.nakamura.api.lite.Session;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
 import org.sakaiproject.nakamura.api.lite.StorageClientUtils;
@@ -77,7 +79,7 @@ import javax.servlet.http.HttpServletResponse;
   @Property(name = "sling.post.operation", value = "tag"),
   @Property(name = "service.description", value = "Associates one or more tags with a piece of content."),
   @Property(name = "service.vendor", value = "The Sakai Foundation") })
-@ServiceDocumentation(name = "SparseTagOperation", okForVersion = "0.11",
+@ServiceDocumentation(name = "SparseTagOperation", okForVersion = "1.1",
   shortDescription = "Tag a node",
   description = "Add a tag to a node.",
   bindings = {
@@ -89,7 +91,7 @@ import javax.servlet.http.HttpServletResponse;
       },
       parameters = {
         @ServiceParameter(name = ":operation", description = "(required) The value HAS TO BE <i>tag</i>."),
-        @ServiceParameter(name = "key", description = "(required) Can be either 1) A fully qualified path, 2) UUID, or 3) a content poolId.")
+        @ServiceParameter(name = "key", description = "(required, multiple) Can be either 1) A fully qualified path, 2) UUID, or 3) a content poolId. Accepts single or multiple values on this key.")
       },
       response = {
         @ServiceResponse(code = 201, description = "The tag was added to the content node."),
@@ -136,8 +138,7 @@ public class SparseTagOperation extends AbstractSparsePostOperation {
                   cm = adminSession.getContentManager();
               ImmutableMap.Builder<String, Object>
                   builder = ImmutableMap.builder();
-              String
-                  tag = tagContentPath.substring(6);
+              String tag = tagContentPath.substring("/tags/".length());
 
               //create tag
               builder.put("sakai:tag-name", tag);
@@ -152,8 +153,8 @@ public class SparseTagOperation extends AbstractSparsePostOperation {
                 Security.ZONE_CONTENT,
                 tagContentPath,
                   new AclModification[] {
-                      new AclModification(AclModification.denyKey(User.ANON_USER),
-                          Permissions.ALL.getPermission(), AclModification.Operation.OP_REPLACE),
+                      new AclModification(AclModification.grantKey(User.ANON_USER),
+                          Permissions.CAN_READ.getPermission(), AclModification.Operation.OP_REPLACE),
                       new AclModification(AclModification.grantKey(Group.EVERYONE),
                           Permissions.CAN_READ.getPermission(), AclModification.Operation.OP_REPLACE),
                       new AclModification(AclModification.grantKey(Group.ADMINISTRATORS_GROUP),
@@ -224,68 +225,85 @@ public class SparseTagOperation extends AbstractSparsePostOperation {
     boolean isProfile = "sakai/user-profile".equals(resourceType) || "sakai/group-profile".equals(resourceType);
 
     // Check if the uuid is in the request.
-    RequestParameter key = request.getRequestParameter("key");
-    if (key == null || "".equals(key.getString())) {
+    String[] keys = request.getParameterValues("key");
+    if (keys == null || keys.length == 0) {
       response.setStatus(HttpServletResponse.SC_BAD_REQUEST,
           "Missing parameter: key");
       return;
     }
-    
-    String tagContentPath = key.getString();
-    
-    String tagName = "";
-    try {
 
-      Content
-          tagResource = getOrCreateTag(resourceResolver, tagContentPath);
+    for (String key : keys) {
+      String tagName = "";
+      try {
 
-      if (tagResource == null) {
-          response.setStatus(HttpServletResponse.SC_NOT_FOUND, "No tag exists at path " + tagContentPath);
-          return;
+        Content
+            tagResource = getOrCreateTag(resourceResolver, key);
+
+        if (tagResource == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND, "No tag exists at path " + key);
+            return;
+        }
+
+        tagName = tagContentWithContentTag(contentManager, content, tagResource);
+
+      } catch (Exception e) {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getLocalizedMessage());
+        return;
       }
-
-      tagName = tagContentWithContentTag(contentManager, content, tagResource);
-
-    } catch (Exception e) {
-      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getLocalizedMessage());
-      return;
-    }
     
-    // If we're tagging an authorizable, add the property here
-    if (isProfile) {
-      final String azId = PathUtils.getAuthorizableId(content.getPath());
-      Authorizable authorizable = authManager.findAuthorizable(azId);
-      if (authorizable != null) {
-        // add tag names
-        Set<String> tagNameSet = Sets.newHashSet(StorageClientUtils
-            .nonNullStringArray((String[]) authorizable.getProperty(SAKAI_TAGS)));
-        tagNameSet.add(tagName);
-        authorizable.setProperty(SAKAI_TAGS,
-            tagNameSet.toArray(new String[tagNameSet.size()]));
+      // If we're tagging an authorizable, add the property here
+      if (isProfile) {
+        final String azId = PathUtils.getAuthorizableId(content.getPath());
+        Authorizable authorizable = authManager.findAuthorizable(azId);
+        if (authorizable != null) {
+          // add tag names
+          Set<String> tagNameSet = Sets.newHashSet(StorageClientUtils
+              .nonNullStringArray((String[]) authorizable.getProperty(SAKAI_TAGS)));
+          tagNameSet.add(tagName);
+          authorizable.setProperty(SAKAI_TAGS,
+              tagNameSet.toArray(new String[tagNameSet.size()]));
         
-        authManager.updateAuthorizable(authorizable);
+          authManager.updateAuthorizable(authorizable);
+        }
+      } else {
+        Session adminSession = null;
+        try {
+          adminSession = session.getRepository().loginAdministrative();
+          ContentManager cm = adminSession.getContentManager();
+          Content adminTag = cm.get(key);
+          String[] tagNames = StorageClientUtils.nonNullStringArray((String[]) content
+              .getProperty(SAKAI_TAGS));
+          TagUtils.bumpTagCounts(adminTag, tagNames, true, false, cm);
+        } finally {
+          if (adminSession != null) {
+            try {
+              adminSession.logout();
+            } catch (ClientPoolException e) {
+              // noop; nothing to do
+            }
+          }
+        }
+      }
+      // Send an OSGi event.
+      try {
+        Dictionary<String, String> properties = new Hashtable<String, String>();
+        properties.put(UserConstants.EVENT_PROP_USERID, user);
+        properties.put("tag-name", tagName);
+        EventUtils.sendOsgiEvent(request.getResource(), properties, TOPIC_FILES_TAG,
+            eventAdmin);
+      } catch (Exception e) {
+        // We do NOT interrupt the normal workflow if sending an event fails.
+        // We just log it to the error log.
+        LOGGER.error("Could not send an OSGi event for tagging a file", e);
       }
     }
-    // Send an OSGi event.
-    try {
-      Dictionary<String, String> properties = new Hashtable<String, String>();
-      properties.put(UserConstants.EVENT_PROP_USERID, user);
-      properties.put("tag-name", tagName);
-      EventUtils.sendOsgiEvent(request.getResource(), properties, TOPIC_FILES_TAG,
-          eventAdmin);
-    } catch (Exception e) {
-      // We do NOT interrupt the normal workflow if sending an event fails.
-      // We just log it to the error log.
-      LOGGER.error("Could not send an OSGi event for tagging a file", e);
-    }
-
   }
 
   private String tagContentWithContentTag(ContentManager contentManager, Content content, Content contentTag) throws Exception {
     String tagName = "";
     try {
-      checkForTagResourceType((String)contentTag.getProperty("sling:resourceType"));
-      FileUtils.addTag(contentManager, content, contentTag);
+      checkForTagResourceType((String)contentTag.getProperty(SLING_RESOURCE_TYPE_PROPERTY));
+      TagUtils.addTag(contentManager, content, contentTag);
       if (contentTag.hasProperty(SAKAI_TAG_NAME)) {
         tagName = (String)contentTag.getProperty(SAKAI_TAG_NAME);
       }
@@ -296,7 +314,7 @@ public class SparseTagOperation extends AbstractSparsePostOperation {
   }
   
   private void checkForTagResourceType(String type) throws Exception {
-    if (!"sakai/tag".equals(type)) {
+    if (!RT_SAKAI_TAG.equals(type)) {
       throw new Exception("Provided key doesn't point to a tag.");
     }
   }
