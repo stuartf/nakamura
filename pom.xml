@@ -14,7 +14,7 @@
   </prerequisites>
   <scm>
     <connection>scm:git:git://github.com/sakaiproject/nakamura.git</connection>
-    <developerConnection>scm:git:git://git@github.com/sakaiproject/nakamura.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:sakaiproject/nakamura.git</developerConnection>
     <url>http://github.com/sakaiproject/nakamura/</url>
   </scm>
   <issueManagement>
@@ -1137,7 +1137,7 @@
       <dependency>
         <groupId>org.sakaiproject.nakamura</groupId>
         <artifactId>org.sakaiproject.nakamura.solr</artifactId>
-        <version>1.3-20111209</version>
+        <version>1.3-20111212</version>
         <scope>provided</scope>
       </dependency>
 
